@@ -1,10 +1,11 @@
 let gun;
-let bullet;
+let bullets = [];
 
 class Bullet {
   constructor(position, velocity) {
     this.position = position;
     this.velocity = velocity;
+    this.lifetime = 200;
   }
   
   update() {
@@ -36,8 +37,22 @@ class Gun {
   
   recoil() {
     let recoil = p5.Vector.sub(this.position, this.line1)
-    recoil.setMag(-40);
+    recoil.setMag(-5);
     this.applyForce(recoil);
+  }
+  
+  steer(pointingTo) {
+    let force = p5.Vector.sub(pointingTo, this.position);
+    let distance = force.mag();
+    
+    if (distance < 100) {
+      force.setMag(map(distance, 0, 100, 0, 10))
+    } else {
+      force.setMag(10);
+    }
+    force.sub(gun.vel);
+    force.limit(1);
+    this.applyForce(force);
   }
   
   calculateLines() {
@@ -65,7 +80,6 @@ class Gun {
     this.vel.add(this.acc);
     this.position.add(this.vel);
     this.acc = createVector(0,0);
-    this.vel = createVector(0,0);
   }
   
   show() {
@@ -89,8 +103,10 @@ function setup() {
 function mousePressed() {
   let trajectory = p5.Vector.sub(gun.position, gun.line1);
   trajectory.setMag(5);
+  let bullet = new Bullet();
   bullet.position = gun.position.copy();
   bullet.velocity = trajectory;
+  bullets.push(bullet);
   gun.recoil();
 }
 
@@ -98,15 +114,17 @@ function draw() {
   background(0);
   let pointing_at = createVector(mouseX, mouseY);
   let acc_direction = p5.Vector.sub(pointing_at, gun.position);
-  if (acc_direction.mag() > 10) {
-      acc_direction.setMag(5);
-      gun.applyForce(acc_direction);
-  }
-
+  let distance = acc_direction.mag();
+  
+  gun.steer(pointing_at);
   gun.update();
   gun.calculateLines();
   gun.show();
   
-  bullet.update();
-  bullet.show();
+  for (let bullet of bullets) {
+      bullet.update();
+      bullet.show();
+      bullet.lifetime -= 1;
+  }
+  bullets = bullets.filter(bullet => bullet.lifetime > 0);
 }
